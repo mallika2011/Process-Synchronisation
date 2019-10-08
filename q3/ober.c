@@ -20,21 +20,51 @@
 #include <errno.h>
 #define ll long long
 
-ll n, m, k;
+ll n, m, k,count=0;
 sem_t cab, riders, payment;
-
 struct arg
 {
     ll type; // 1=Premier  2=Pool
     // char *status; //waitState, onRidePremier, onRidePoolOne, onRidePoolFull
     ll maxWaitTime, rideTime;
 };
+struct arg args;
+char type_char[10000];
+
+void prompt()
+{
+    printf("\nEnter the following details to book a cab\n1.Premier\n2.Pool\n");
+    printf("Type : ");
+    scanf("%lld", &args.type);
+    printf("\n");
+    printf("Max Wait Time: ");
+    scanf("%lld", &args.maxWaitTime);
+    printf("\n");
+    printf("Ride Time : ");
+    scanf("%lld", &args.rideTime);
+    printf("\n");
+    printf("**************************************\n");
+}
+
+void *makePayment(void *a)
+{
+    //wait
+    sem_wait(&payment);
+
+    //critical section
+    sleep(2);
+    printf("$$  PAYMENT DONE $$\n");
+
+    //
+    sem_post(&payment);
+}
 
 void *bookCab(void *a)
 {
     struct arg *args = (struct arg *)a;
+
     //wait
-    // printf("wait = %d\n", sem_wait(&cab));
+    printf("Looking for cabs...\n");
     struct timespec ts;
     int s;
     if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
@@ -42,21 +72,17 @@ void *bookCab(void *a)
 
     ts.tv_sec += args->maxWaitTime;
     while ((s = sem_timedwait(&cab, &ts)) == -1 && errno == EINTR)
-        continue; /* Restart if interrupted by handler */
-    /* Check what happened */
+        continue;
     if (s == -1)
     {
         if (errno == ETIMEDOUT)
-            printf("TIMEOUT\n");
+            printf("TIMEOUT: NO CABS FOUND\n");
         else
             perror("sem_timedwait");
         return NULL;
     }
-    else
-        printf("sem_timedwait() succeeded\n");
 
     //critical section
-
     printf("\n-----------------------------------\n");
     printf("RIDING NOW (Ride time : %lld)\n", args->rideTime);
     printf("-----------------------------------\n");
@@ -64,7 +90,9 @@ void *bookCab(void *a)
 
     //signal
     sem_post(&cab);
-    // printf("### RIDE COMPLETED ###\n");
+    printf("### RIDE COMPLETED ###\n");
+    pthread_t t;
+    pthread_create(&t,NULL,makePayment,NULL);
 }
 
 int main(void)
@@ -76,24 +104,24 @@ int main(void)
     sem_init(&riders, 1, m);
     sem_init(&payment, 1, k);
 
-    struct arg args;
-    char type_char[10000];
-
     while (1)
     {
-        printf("\nEnter the following details to book a cab\n1.Premier\n2.Pool\n");
-        printf("Type : ");
-        scanf("%lld", &args.type);
-        printf("\n");
-        printf("Max Wait Time: ");
-        scanf("%lld", &args.maxWaitTime);
-        printf("\n");
-        printf("Ride Time : ");
-        scanf("%lld", &args.rideTime);
-        printf("\n");
-        printf("**************************************\n");
 
+        if(count==m)
+        {
+            sem_destroy(&cab);
+            sem_destroy(&riders);
+            sem_destroy(&payment);
+            // return 0;
+            sleep(60);
+            break;
+        }
+        printf("count %lld\n", count);
+        count++;
+        prompt();
         pthread_t t;
         pthread_create(&t, NULL, bookCab, &args);
+
     }
+    return 0;
 }
