@@ -70,7 +70,7 @@ void makePayment(ll no)
 
     //critical section
     sleep(2);
-    printf("\033[1;32m$$ RIDER %lld PAYMENT DONE $$\n\033[0m", no);
+    printf("\033[1;36m$$ RIDER %lld PAYMENT DONE $$\n\033[0m", no);
     // printf("\033[0m");
 
     //signal
@@ -87,7 +87,7 @@ void *forPoolCheck(void *a)
     pthread_mutex_lock(&poolLock);
 
     while (poolFlag[passengerNumber] == 0 && timeoutFlag[passengerNumber] == 0)
-    {   
+    {
         for (ll i = 0; i < n; i++)
         {
             if (allCabs[i].occupancy == 1 && allCabs[i].type == 2)
@@ -183,8 +183,8 @@ void *bookPoolCab(void *a)
             ;
     }
     //critical section
-    // printf("In critical section pool flag =%lld     timeout flag = %lld\n", poolFlag[passengerNumber],timeoutFlag[passengerNumber] );
-    pthread_mutex_lock(&mutex);    
+    // printf("%lld In critical section pool flag =%lld     timeout flag = %lld\n",passengerNumber, poolFlag[passengerNumber],timeoutFlag[passengerNumber] );
+    pthread_mutex_lock(&mutex);
     if (poolFlag[passengerNumber] == 0 && timeoutFlag[passengerNumber] == 2) //no vacancy in pool cabs but a fresh cab found
     {
         for (ll i = 0; i < n && assigned != 1; i++)
@@ -197,6 +197,11 @@ void *bookPoolCab(void *a)
                 break;
             }
         }
+    }
+    else if (timeoutFlag[passengerNumber] == 1)
+    {
+        pthread_mutex_unlock(&mutex);
+        return NULL;
     }
     pthread_mutex_unlock(&mutex);
 
@@ -309,7 +314,10 @@ int main(void)
 
     for (ll i = 0; i < n; i++)
         pthread_join(cabThread[i], NULL);
+
+    sleep(100);
     sem_destroy(&cab);
+    sem_destroy(&payment);
     pthread_mutex_destroy(&mutex);
     return 0;
 }
