@@ -21,7 +21,7 @@
 #define ll long long
 
 ll interval, t, mwt, rd, endPoolTime, n, m, k, count = 0, poolFlag = 0.;
-sem_t cab, riders, payment;
+sem_t cab, riders, payment, pool;
 pthread_t cabThread[10000], paymentThread, latestPoolThread;
 pthread_mutex_t mutex;
 struct timespec ts;
@@ -30,7 +30,7 @@ struct arg
 {
     ll type; // 1=Premier  2=Pool
     // char *status; //waitState, onRidePremier, onRidePoolOne, onRidePoolFull
-    ll maxWaitTime, rideTime,arrival;
+    ll maxWaitTime, rideTime, arrival;
     ll riderno;
 } args[1000];
 
@@ -55,23 +55,15 @@ char type_char[10000];
 
 void prompt(ll i)
 {
-    // printf("\nEnter the following details to book a cab\n1.Premier\n2.Pool\n");
-    printf("Arrival: ");
+    // printf("<USAGE> <arrival, type, maxWaitTime, rideTime>\n");
     scanf("%lld", &args[i].arrival);
-    printf("Type : ");
     scanf("%lld", &args[i].type);
-    printf("\n");
-    printf("Max Wait Time: ");
     scanf("%lld", &args[i].maxWaitTime);
-    printf("\n");
-    printf("Ride Time : ");
     scanf("%lld", &args[i].rideTime);
-    printf("\n");
-    printf("**************************************\n");
-    args[i].riderno=i;
+    args[i].riderno = i;
 }
 
-void *makePayment(void *a)
+void makePayment(ll no)
 {
     //wait
     sem_wait(&payment);
@@ -79,7 +71,7 @@ void *makePayment(void *a)
     //critical section
     sleep(2);
     printf("\033[1;32m");
-    printf("$$  PAYMENT DONE $$\n");
+    printf("$$ RIDER %lld PAYMENT DONE $$\n",no);
     printf("\033[0m");
 
     //signal
@@ -92,7 +84,7 @@ void *bookPoolCab(void *a)
     int assigned = 0, cabnumber;
     int cabType = riderDetails->type;
     ll passengerNumber = riderDetails->riderno;
-    sleep(riderDetails->arrival);               //At t=arrival this rider arrives
+    sleep(riderDetails->arrival); //At t=arrival this rider arrives
     // printf("Passenger %lld arrived\n",passengerNumber);
 
     pthread_mutex_lock(&mutex);
@@ -106,18 +98,19 @@ void *bookPoolCab(void *a)
             break;
         }
     }
-    // pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex);
 
     //wait
     printf("\033[01;33m");
-    // printf("\nLooking for cabs...\n");
-    // printf("Assigned = %d\n",assigned);
+    printf("\nLooking for cabs...\n");
+    // printf("Assigned = %d\n", assigned);
     printf("\033[0m");
-    int s;
+    int s, found=0;
     if (assigned == 1)
         ;
     else
     {
+        // printf("Came into sem wait for rider %lld\n", passengerNumber);
         if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
             return -1;
         ts.tv_sec += riderDetails->maxWaitTime;
@@ -129,17 +122,16 @@ void *bookPoolCab(void *a)
             if (errno == ETIMEDOUT)
             {
                 printf("\033[1;31m");
-                printf("\nTIMEOUT: NO CABS FOUND\n");
+                printf("\nTIMEOUT: NO CABS FOUND FOR RIDER %lld\n", passengerNumber);
                 printf("\033[0m");
             }
             else
                 perror("sem_timedwait");
             return NULL;
         }
-        // sem_wait(&cab);
     }
     //critical section
-    // pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&mutex);
     for (ll i = 0; i < n && assigned != 1; i++)
     {
         if (allCabs[i].occupancy == 0)
@@ -157,14 +149,22 @@ void *bookPoolCab(void *a)
     printf("-----------------------------------\n");
     printf("\033[0m");
     sleep(riderDetails->rideTime);
-    // printf("AFTER SLEEEP RIDERNO = %lld         %lld\n", riderDetails->riderno, passengerNumber);
+
     //signal
-    sem_post(&cab);
+    int sig = 0;
+    pthread_mutex_lock(&mutex);
     allCabs[cabnumber].occupancy--;
+    if (allCabs[cabnumber].occupancy == 0)
+        sig = 1;
+    pthread_mutex_unlock(&mutex);
+
+    if (sig == 1)
+    sem_post(&cab);
+
     printf("\033[1;35m");
     printf("\n### RIDER %lld RIDE COMPLETED IN %d ###\n", passengerNumber, cabnumber);
     printf("\033[0m");
-    pthread_create(&paymentThread, NULL, makePayment, NULL);
+    makePayment(passengerNumber);
 }
 
 void *bookPremierCab(void *a)
@@ -173,7 +173,7 @@ void *bookPremierCab(void *a)
     int assigned = 0, cabnumber;
     int cabType = riderDetails->type;
     ll passengerNumber = riderDetails->riderno;
-    sleep(riderDetails->arrival);               //At t=arrival this rider arrives
+    sleep(riderDetails->arrival); //At t=arrival this rider arrives
 
     //wait
     printf("\033[01;33m");
@@ -227,16 +227,13 @@ void *bookPremierCab(void *a)
     printf("\033[1;35m");
     printf("\n### RIDER %lld RIDE COMPLETED IN %d ###\n", passengerNumber, cabnumber);
     printf("\033[0m");
-    pthread_create(&paymentThread, NULL, makePayment, NULL);
+    makePayment(passengerNumber);
 }
 
 int main(void)
 {
     srand(time(0));
     printf("\033[0m");
-    printf("\n**************************************\n");
-    printf("\nPlease enter the number of cab, riders & payment servers\n");
-
     scanf("%lld%lld%lld", &n, &m, &k);
 
     sem_init(&cab, 1, n);             //initalising cab semaphore
@@ -254,7 +251,7 @@ int main(void)
     printf("\nCAB SERVICE DETAILS:\n");
     for (ll i = 0; i < m; i++)
     {
-        printf("At T=%lld    Passenger: %lld    Cab Type: %lld    MaxWaitTime: %lld    RideTime: %lld\n",args[i].arrival, args[i].riderno,args[i].type, args[i].maxWaitTime,args[i].rideTime);
+        printf("At T=%lld    Passenger: %lld    Cab Type: %lld    MaxWaitTime: %lld    RideTime: %lld\n", args[i].arrival, args[i].riderno, args[i].type, args[i].maxWaitTime, args[i].rideTime);
     }
     printf("\033[0m");
 
@@ -268,7 +265,7 @@ int main(void)
 
     for (ll i = 0; i < n; i++)
         pthread_join(cabThread[i], NULL);
-    sleep(60);
+    // sleep(10);
     sem_destroy(&cab);
     pthread_mutex_destroy(&mutex);
     return 0;
