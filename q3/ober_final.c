@@ -268,7 +268,7 @@ int main(void)
 
     for (ll i = 0; i < n; i++)
         pthread_join(cabThread[i], NULL);
-    // sleep(60);
+    sleep(60);
     sem_destroy(&cab);
     pthread_mutex_destroy(&mutex);
     return 0;
