@@ -43,33 +43,33 @@ struct allCabs
 
 char type_char[10000];
 
-void prompt(ll i)
-{
-    args[i].arrival = rand() % 10;
-    // sleep(interval);
-    args[i].type = rand() % 2 + 1;
-    args[i].maxWaitTime = rand() % 5 + 1;
-    args[i].rideTime = rand() % 10 + 1;
-    args[i].riderno = i;
-}
-
 // void prompt(ll i)
 // {
-//     // printf("\nEnter the following details to book a cab\n1.Premier\n2.Pool\n");
-//     printf("Arrival: ");
-//     scanf("%lld", &args[i].arrival);
-//     printf("Type : ");
-//     scanf("%lld", &args[i].type);
-//     printf("\n");
-//     printf("Max Wait Time: ");
-//     scanf("%lld", &args[i].maxWaitTime);
-//     printf("\n");
-//     printf("Ride Time : ");
-//     scanf("%lld", &args[i].rideTime);
-//     printf("\n");
-//     printf("**************************************\n");
-//     args[i].riderno=i;
+//     args[i].arrival = rand() % 10;
+//     // sleep(interval);
+//     args[i].type = rand() % 2 + 1;
+//     args[i].maxWaitTime = rand() % 5 + 1;
+//     args[i].rideTime = rand() % 10 + 1;
+//     args[i].riderno = i;
 // }
+
+void prompt(ll i)
+{
+    // printf("\nEnter the following details to book a cab\n1.Premier\n2.Pool\n");
+    printf("Arrival: ");
+    scanf("%lld", &args[i].arrival);
+    printf("Type : ");
+    scanf("%lld", &args[i].type);
+    printf("\n");
+    printf("Max Wait Time: ");
+    scanf("%lld", &args[i].maxWaitTime);
+    printf("\n");
+    printf("Ride Time : ");
+    scanf("%lld", &args[i].rideTime);
+    printf("\n");
+    printf("**************************************\n");
+    args[i].riderno=i;
+}
 
 void *makePayment(void *a)
 {
@@ -93,6 +93,7 @@ void *bookPoolCab(void *a)
     int cabType = riderDetails->type;
     ll passengerNumber = riderDetails->riderno;
     sleep(riderDetails->arrival);               //At t=arrival this rider arrives
+    // printf("Passenger %lld arrived\n",passengerNumber);
 
     pthread_mutex_lock(&mutex);
     for (ll i = 0; i < n; i++)
@@ -105,12 +106,12 @@ void *bookPoolCab(void *a)
             break;
         }
     }
-    pthread_mutex_unlock(&mutex);
+    // pthread_mutex_unlock(&mutex);
 
     //wait
     printf("\033[01;33m");
     // printf("\nLooking for cabs...\n");
-    printf("Assigned = %d\n",assigned);
+    // printf("Assigned = %d\n",assigned);
     printf("\033[0m");
     int s;
     if (assigned == 1)
@@ -138,7 +139,7 @@ void *bookPoolCab(void *a)
         // sem_wait(&cab);
     }
     //critical section
-    pthread_mutex_lock(&mutex);
+    // pthread_mutex_lock(&mutex);
     for (ll i = 0; i < n && assigned != 1; i++)
     {
         if (allCabs[i].occupancy == 0)
@@ -267,7 +268,7 @@ int main(void)
 
     for (ll i = 0; i < n; i++)
         pthread_join(cabThread[i], NULL);
-    sleep(60);
+    // sleep(60);
     sem_destroy(&cab);
     pthread_mutex_destroy(&mutex);
     return 0;

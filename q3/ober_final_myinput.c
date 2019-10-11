@@ -93,6 +93,7 @@ void *bookPoolCab(void *a)
     int cabType = riderDetails->type;
     ll passengerNumber = riderDetails->riderno;
     sleep(riderDetails->arrival);               //At t=arrival this rider arrives
+    // printf("Passenger %lld arrived\n",passengerNumber);
 
     pthread_mutex_lock(&mutex);
     for (ll i = 0; i < n; i++)
@@ -105,12 +106,12 @@ void *bookPoolCab(void *a)
             break;
         }
     }
-    pthread_mutex_unlock(&mutex);
+    // pthread_mutex_unlock(&mutex);
 
     //wait
     printf("\033[01;33m");
     // printf("\nLooking for cabs...\n");
-    printf("Assigned = %d\n",assigned);
+    // printf("Assigned = %d\n",assigned);
     printf("\033[0m");
     int s;
     if (assigned == 1)
@@ -138,7 +139,7 @@ void *bookPoolCab(void *a)
         // sem_wait(&cab);
     }
     //critical section
-    pthread_mutex_lock(&mutex);
+    // pthread_mutex_lock(&mutex);
     for (ll i = 0; i < n && assigned != 1; i++)
     {
         if (allCabs[i].occupancy == 0)
