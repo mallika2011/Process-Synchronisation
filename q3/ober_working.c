@@ -183,7 +183,6 @@ void *bookPoolCab(void *a)
             ;
     }
     //critical section
-    // printf("%lld In critical section pool flag =%lld     timeout flag = %lld\n",passengerNumber, poolFlag[passengerNumber],timeoutFlag[passengerNumber] );
     pthread_mutex_lock(&mutex);
     if (poolFlag[passengerNumber] == 0 && timeoutFlag[passengerNumber] == 2) //no vacancy in pool cabs but a fresh cab found
     {
@@ -315,7 +314,7 @@ int main(void)
     for (ll i = 0; i < n; i++)
         pthread_join(cabThread[i], NULL);
 
-    sleep(100);
+    // sleep(100);
     sem_destroy(&cab);
     sem_destroy(&payment);
     pthread_mutex_destroy(&mutex);

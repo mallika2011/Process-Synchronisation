@@ -20,6 +20,13 @@
 #include <errno.h>
 #define ll long long
 #define NMAX 1000
+#define yellow printf("\033[01;33m")
+#define blue printf("\033[1;34m")
+#define purple printf("\033[1;35m")
+#define green printf("\033[1;32m")
+#define red printf("\033[1;31m")
+#define cyan printf("\033[1;36m")
+#define reset printf("\033[0m")
 
 ll vessels[NMAX];
 ll m, n, k, remaining, w, r, freeSlots = 0, count = 0, table[NMAX], students_now, waiting_students = 0;
@@ -44,7 +51,10 @@ void *wait_for_slot(void *count)
 {
     ll c = (ll)count;
     int flag = 0;
-    printf("Student %lld looking for a free slot\n", c);
+    red;
+    printf("Student %lld has arrived and is looking for a free slot\n", c);
+    // printf("Student %lld looking for a free slot\n", c);
+    reset;
 
     //polling till you get a free slot
     while (1)
@@ -58,15 +68,19 @@ void *wait_for_slot(void *count)
                 if (container[i].slots > 0)
                 {
                     //eat biryani
+                    green;
                     printf("Student %lld has recived biryani from container %lld\n", c, i);
                     container[i].slots--;
-                    sleep(5); //assuming 5s to eat biryani
+                    reset;
+                    printf("[Now slots in table %lld become %lld]\n", i, container[i].slots);
+
                     flag = 1;
                     pthread_mutex_lock(&student_lock);
                     waiting_students--;
                     pthread_mutex_unlock(&student_lock);
 
                     pthread_mutex_unlock(&container_lock[i]);
+                    sleep(5); //assuming 5s to eat biryani
                     break;
                 }
                 //unlock
@@ -83,6 +97,7 @@ void *wait_for_slot(void *count)
 //serving biryani on container (table) threads
 void *ready_to_serve(void *ind)
 {
+    // printf("ready to serve biryani\n");
     if (waiting_students == 0)
         pthread_exit(NULL);
     ll i = (ll)ind;
@@ -91,16 +106,21 @@ void *ready_to_serve(void *ind)
     container[i].slots = toBeServed;
     pthread_mutex_unlock(&container_lock[i]);
 
-    printf("No. of slots = %lld and students now = %lld\n", container[i].slots,waiting_students);
+    purple;
+    printf("Table %lld generated %lld no. of slots\n", i, container[i].slots);
+    printf("Table %lld ready to serve\n", i);
+    reset;
     while (container[i].slots != 0 && waiting_students != 0) //Wait
         ;
-    printf("Container %lld cannot serve any more slots\n", i);
+    purple;
+    printf("Serving Container of Table %lld is empty\n", i);
+    reset;
     // ready_to_serve((void *)i);
 }
 
 void biryani_ready(ll ind)
 {
-    printf("Entered biryani ready\n");
+    // printf("Entered biryani ready\n");
 
     while (chefs[ind].r > 0 && waiting_students != 0)
     {
@@ -113,8 +133,11 @@ void biryani_ready(ll ind)
             {
                 if (container[j].isFull == 0)
                 {
-                    printf("Found an empty container with chef %lld\n", ind);
+                    yellow;
+                    printf("Chef %lld found an empty container at table %lld\n", ind, j);
                     pthread_mutex_lock(&chef_lock[ind]);
+                    printf("Chef %lld emptying biryani\n", ind);
+                    reset;
                     chefs[ind].r--;
                     pthread_mutex_unlock(&chef_lock[ind]);
 
@@ -122,7 +145,7 @@ void biryani_ready(ll ind)
                     container[j].p = chefs[ind].p;
                     container[j].isFull = 1;
                     container[j].num = j;
-                    
+
                     //create a thread for this container (table)
                     pthread_mutex_unlock(&container_lock[ind]);
                     pthread_create(&containerThread[j], NULL, ready_to_serve, (void *)j);
@@ -130,7 +153,7 @@ void biryani_ready(ll ind)
                 }
                 pthread_mutex_unlock(&container_lock[ind]);
             }
-            else 
+            else
                 continue;
         }
     }
@@ -148,7 +171,9 @@ void *create_Cook_Chef(void *arg)
     chefs[i].p = rand() % 26 + 25;
     chefs[i].i = i;
     pthread_mutex_unlock(&chef_lock[i]);
-    printf("\033[1;36mChef %lld beginning to prepare %lld vessels \nfor %lld s to feed %lld students\033[0m\n", chefs[i].i, chefs[i].r, chefs[i].w, chefs[i].p);
+    blue;
+    printf("Chef: %lld    Vessels: %lld    Time: %llds    Capacity: %lld\n", chefs[i].i, chefs[i].r, chefs[i].w, chefs[i].p);
+    reset;
     sleep(chefs[i].w);
 
     //biryani is ready:
@@ -159,6 +184,10 @@ void *create_Cook_Chef(void *arg)
     {
         ;
     }
+
+    blue;
+    printf("All the vessels prepared by Robot Chef J are emptied. Resuming cooking now\n");
+    reset;
     create_Cook_Chef((void *)i);
 }
 
@@ -173,13 +202,13 @@ void main()
     }
     pthread_mutex_init(&student_lock, NULL);
     srand(time(0));
-    printf("\033[01;33m");
+    yellow;
     printf("Enter m,n,k : ");
-    printf("\033[0m");
+    reset;
     scanf("%lld%lld%lld", &m, &n, &k);
     waiting_students = k;
-    remaining=k;
-    
+    remaining = k;
+
     for (ll i = 0; i < m; i++)
     {
         pthread_create(&chefThread[i], NULL, create_Cook_Chef, (void *)i);
@@ -191,19 +220,22 @@ void main()
         students_now = 2;
         for (ll i = 0; i < students_now; i++)
         {
-            printf("lal\n");
+            // printf("lala\n");
             pthread_create(&studentThread[count], NULL, wait_for_slot, (void *)count);
             count++;
         }
-        printf("decrementing remainig\n");
+        // printf("decrementing remainig\n");
         remaining -= students_now;
     }
 
-    for(ll i=0; i< m; i++)
-        pthread_join(chefThread[i],NULL);
-    for(ll j=0; j< n; j++)
-        pthread_join(containerThread[j],NULL);
-    for(ll i=0;i<k;i++)
-        pthread_join(studentThread[i],NULL);
+    for (ll i = 0; i < m; i++)
+        pthread_join(chefThread[i], NULL);
+    for (ll j = 0; j < n; j++)
+        pthread_join(containerThread[j], NULL);
+    for (ll i = 0; i < k; i++)
+        pthread_join(studentThread[i], NULL);
 
- }
+    green;
+    printf("-------------------------------------------\nAll students done eating.\nSimulation done\n---------------------------------------\n");
+    reset;
+}
