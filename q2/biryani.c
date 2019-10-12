@@ -51,10 +51,8 @@ void *wait_for_slot(void *count)
 {
     ll c = (ll)count;
     int flag = 0;
-    red;
-    printf("Student %lld has arrived and is looking for a free slot\n", c);
+    printf("\033[1;31m\nStudent %lld has arrived and is looking for a free slot\033[0m\n", c);
     // printf("Student %lld looking for a free slot\n", c);
-    reset;
 
     //polling till you get a free slot
     while (1)
@@ -68,10 +66,8 @@ void *wait_for_slot(void *count)
                 if (container[i].slots > 0)
                 {
                     //eat biryani
-                    green;
-                    printf("Student %lld has recived biryani from container %lld\n", c, i);
+                    printf("\033[1;32mStudent %lld has recived biryani from container %lld\n\n\033[0m", c, i);
                     container[i].slots--;
-                    reset;
                     printf("[Now slots in table %lld become %lld]\n", i, container[i].slots);
 
                     flag = 1;
@@ -106,15 +102,13 @@ void *ready_to_serve(void *ind)
     container[i].slots = toBeServed;
     pthread_mutex_unlock(&container_lock[i]);
 
-    purple;
-    printf("Table %lld generated %lld no. of slots\n", i, container[i].slots);
-    printf("Table %lld ready to serve\n", i);
-    reset;
+    printf("\033[1;35m-----------------------------------------\n\033[0m");
+    printf("\033[1;35mTable %lld generated %lld no. of slots\n\033[0m", i, container[i].slots);
+    printf("\033[1;35mTable %lld ready to serve\n\033[0m", i);
+    printf("\033[1;35m-----------------------------------------\n\033[0m");
     while (container[i].slots != 0 && waiting_students != 0) //Wait
         ;
-    purple;
-    printf("Serving Container of Table %lld is empty\n", i);
-    reset;
+    printf("\033[1;35mServing Container of Table %lld is empty\n\033[0m", i);
     // ready_to_serve((void *)i);
 }
 
@@ -133,11 +127,9 @@ void biryani_ready(ll ind)
             {
                 if (container[j].isFull == 0)
                 {
-                    yellow;
-                    printf("Chef %lld found an empty container at table %lld\n", ind, j);
+                    printf("\033[01;33mChef %lld found an empty container at table %lld\n\033[0m", ind, j);
                     pthread_mutex_lock(&chef_lock[ind]);
-                    printf("Chef %lld emptying biryani\n", ind);
-                    reset;
+                    printf("\033[01;33mChef %lld emptying biryani\n\033[0m", ind);
                     chefs[ind].r--;
                     pthread_mutex_unlock(&chef_lock[ind]);
 
@@ -171,9 +163,7 @@ void *create_Cook_Chef(void *arg)
     chefs[i].p = rand() % 26 + 25;
     chefs[i].i = i;
     pthread_mutex_unlock(&chef_lock[i]);
-    blue;
-    printf("Chef: %lld    Vessels: %lld    Time: %llds    Capacity: %lld\n", chefs[i].i, chefs[i].r, chefs[i].w, chefs[i].p);
-    reset;
+    printf("\033[1;34mChef: %lld    Vessels: %lld    Time: %llds    Capacity: %lld\n\033[0m", chefs[i].i, chefs[i].r, chefs[i].w, chefs[i].p);
     sleep(chefs[i].w);
 
     //biryani is ready:
@@ -185,9 +175,7 @@ void *create_Cook_Chef(void *arg)
         ;
     }
 
-    blue;
-    printf("All the vessels prepared by Robot Chef J are emptied. Resuming cooking now\n");
-    reset;
+    printf("\033[1;34mAll the vessels prepared by Robot Chef J are emptied. Resuming cooking now\n\033[0m");
     create_Cook_Chef((void *)i);
 }
 
@@ -202,9 +190,7 @@ void main()
     }
     pthread_mutex_init(&student_lock, NULL);
     srand(time(0));
-    yellow;
-    printf("Enter m,n,k : ");
-    reset;
+    printf("\033[01;33mEnter m,n,k : \033[0m");
     scanf("%lld%lld%lld", &m, &n, &k);
     waiting_students = k;
     remaining = k;
@@ -235,7 +221,5 @@ void main()
     for (ll i = 0; i < k; i++)
         pthread_join(studentThread[i], NULL);
 
-    green;
-    printf("-------------------------------------------\nAll students done eating.\nSimulation done\n---------------------------------------\n");
-    reset;
+    printf("\033[1;32m-------------------------------------------\nAll students done eating.\nSimulation done\n---------------------------------------\n\033[0m");
 }
