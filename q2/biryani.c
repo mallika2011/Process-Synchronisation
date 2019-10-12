@@ -68,6 +68,7 @@ void *wait_for_slot(void *count)
                     //eat biryani
                     printf("\033[1;32mStudent %lld has recived biryani from container %lld\n\n\033[0m", c, i);
                     container[i].slots--;
+                    container[i].p--;
                     printf("[Now slots in table %lld become %lld]\n", i, container[i].slots);
 
                     flag = 1;
@@ -106,10 +107,11 @@ void *ready_to_serve(void *ind)
     printf("\033[1;35mTable %lld generated %lld no. of slots\n\033[0m", i, container[i].slots);
     printf("\033[1;35mTable %lld ready to serve\n\033[0m", i);
     printf("\033[1;35m-----------------------------------------\n\033[0m");
-    while (container[i].slots != 0 && waiting_students != 0) //Wait
+
+    while (container[i].slots != 0 && waiting_students != 0 && container[i].p>0) //Wait
         ;
     printf("\033[1;35mServing Container of Table %lld is empty\n\033[0m", i);
-    // ready_to_serve((void *)i);
+    ready_to_serve((void *)i);
 }
 
 void biryani_ready(ll ind)
@@ -201,9 +203,12 @@ void main()
     }
     while (remaining > 0) //loop until all students have arrived
     {
-        // students_now = rand() % k + 1;
+        students_now = rand() % remaining + 1;
         sleep(3); // assuming students come every 3 seconds
-        students_now = 2;
+        // students_now = 2;
+        
+        printf("\033[1;36m\n************************************************\nTOTAL OF %lld STUDENTS ARRIVED\n************************************************\n\n\033[0m",students_now);
+
         for (ll i = 0; i < students_now; i++)
         {
             // printf("lala\n");
