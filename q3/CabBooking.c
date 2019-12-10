@@ -21,10 +21,10 @@
 #include <errno.h>
 #define ll long long
 
-ll interval, t, mwt, rd, endPoolTime, n, m, k, count = 0, poolFlag[1000], timeoutFlag[1000];
+ll interval, t, mwt, rd, endPoolTime, n, m, k, count = 0, poolFlag[1000], timeoutFlag[1000], nowpaying, exitted = 0;
 sem_t cab, riders, payment, pool;
-pthread_t cabThread[10000], paymentThread, poolThread, timeoutThread;
-pthread_mutex_t mutex, poolLock;
+pthread_t riderThread[10000], paymentThread[10000], poolThread, timeoutThread;
+pthread_mutex_t mutex, poolLock, payLock;
 struct timespec ts;
 
 struct arg
@@ -62,19 +62,23 @@ void prompt(ll i)
     args[i].riderno = i;
 }
 
-void makePayment(ll no)
+void *makePayment(void *ind)
 {
-    // printf("Came into payment\n");
-    //wait
-    sem_wait(&payment);
+    while (exitted < m)
+    {
+        //wait on payment semaphore
+        sem_wait(&payment);
 
-    //critical section
-    sleep(2);
-    printf("\033[1;36m$$ RIDER %lld PAYMENT DONE $$\n\033[0m", no);
-    // printf("\033[0m");
-
-    //signal
-    sem_post(&payment);
+        //critical section
+        //as soon as some rider signals payment one of the servers gets active
+        // sleep(2);
+        if (exitted < m)
+        {
+            printf("\033[1;36m$$ RIDER %lld PAYMENT DONE $$\n\033[0m", nowpaying);
+            pthread_mutex_unlock(&payLock);
+            exitted++;
+        }
+    }
 }
 
 void *forPoolCheck(void *a)
@@ -123,6 +127,7 @@ void *forTimeoutCheck(void *a)
         {
             printf("\033[1;31m\nTIMEOUT: NO CABS FOUND FOR RIDER %lld\n\033[0m", passengerNumber);
             timeoutFlag[passengerNumber] = 1;
+            exitted++;
         }
         else
             perror("sem_timedwait");
@@ -219,7 +224,10 @@ void *bookPoolCab(void *a)
         sem_post(&cab);
     }
     printf("\033[1;35m\n### RIDER %lld RIDE COMPLETED IN %d ###\n\033[0m", passengerNumber, cabnumber);
-    makePayment(passengerNumber);
+    pthread_mutex_lock(&payLock);
+    nowpaying = passengerNumber;
+    sem_post(&payment); //post request to server
+    sleep(2);
 }
 
 void *bookPremierCab(void *a)
@@ -245,6 +253,7 @@ void *bookPremierCab(void *a)
         if (errno == ETIMEDOUT)
         {
             printf("\033[1;31m\nTIMEOUT: NO CABS FOUND\n\033[0m");
+            exitted++;
         }
         else
             perror("sem_timedwait");
@@ -272,7 +281,10 @@ void *bookPremierCab(void *a)
     sem_post(&cab);
     allCabs[cabnumber].occupancy--;
     printf("\033[1;35m\n### RIDER %lld RIDE COMPLETED IN %d ###\n\033[0m", passengerNumber, cabnumber);
-    makePayment(passengerNumber);
+    pthread_mutex_lock(&payLock);
+    nowpaying = passengerNumber;
+    sem_post(&payment); //post request to server
+    sleep(2);
 }
 
 int main(void)
@@ -283,9 +295,10 @@ int main(void)
 
     sem_init(&cab, 1, n);                //initalising cab semaphore
     sem_init(&riders, 1, m);             //initialising rider semaphore
-    sem_init(&payment, 1, k);            //initialising payment semaphore
+    sem_init(&payment, 0, 0);            //initialising payment semaphore
     pthread_mutex_init(&mutex, NULL);    //initialising a mutex lock
     pthread_mutex_init(&poolLock, NULL); //initialising a pool lock
+    pthread_mutex_init(&payLock, NULL);  //initialising a pay lock
 
     for (ll i = 0; i < n; i++)
         allCabs[i].occupancy = 0; //initialising all cabs as 0 occupancy
@@ -301,19 +314,28 @@ int main(void)
     }
     printf("\033[0m");
 
+    for (ll i = 0; i < k; i++)
+    {
+        pthread_create(&paymentThread[i], NULL, makePayment, NULL);
+    }
+
     for (ll i = 0; i < m; i++)
     {
         poolFlag[i] = 0;
         timeoutFlag[i] = 0;
         if (args[i].type == 1)
-            pthread_create(&cabThread[i], NULL, bookPremierCab, &args[i]);
+            pthread_create(&riderThread[i], NULL, bookPremierCab, &args[i]);
         else if (args[i].type == 2)
-            pthread_create(&cabThread[i], NULL, bookPoolCab, &args[i]);
+            pthread_create(&riderThread[i], NULL, bookPoolCab, &args[i]);
     }
 
     for (ll i = 0; i < n; i++)
-        pthread_join(cabThread[i], NULL);
+        pthread_join(riderThread[i], NULL);
 
+    for (ll i = 0; i < k; i++)
+        sem_post(&payment);
+    for (ll i = 0; i < k; i++)
+        pthread_join(paymentThread[i], NULL);
     // sleep(100);
     sem_destroy(&cab);
     sem_destroy(&payment);

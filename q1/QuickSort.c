@@ -14,6 +14,12 @@
 #include <math.h>
 
 long long int n;
+struct arg
+{
+    int l;
+    int r;
+    int *arr;
+};
 
 int *shareMem(size_t size)
 {
@@ -49,7 +55,7 @@ int partition(int arr[], int l, int r)
     return (i);
 }
 
-void quickSort(int arr[], int l, int r)
+void quickSort(int *arr, int l, int r)
 {
     if (r - l + 1 <= 5)
     {
@@ -100,103 +106,111 @@ void quickSort(int arr[], int l, int r)
     }
 }
 
-struct arg
-{
-    int l;
-    int r;
-    int *arr;
-};
 
-void *t_quickSort(void *a)
-{
+
+
+void *t_quickSort(void* a){
+
     //note that we are passing a struct to the threads for simplicity.
-    struct arg *args = (struct arg *)a;
+    struct arg *args = (struct arg*) a;
 
     int l = args->l;
     int r = args->r;
     int *arr = args->arr;
-    if (l > r)
-        return NULL;
-
+    if(l>r) return NULL;    
+    
     //insertion sort
-    if (r - l + 1 <= 5)
-    {
-        for (int i = l + 1; i < r; i++)
+    if(r-l+1<=5){
+
+        for(int i=l+1-1;i<r;i++)
         {
-            int k = i - 1;
-            int t = arr[i];
-            while (k >= 0 && arr[k] > t)
+
+            int k=i-1; 
+            int t=arr[i];
+            while(k>=0 && arr[k]>t)
             {
-                arr[k + 1] = arr[k];
+                arr[k+1]=arr[k];
                 k--;
             }
-            arr[k + 1] = t;
+            arr[k+1]=t;
         }
+
+        return NULL;
     }
 
     int ind = partition(arr, l, r);
-
     //sort left half array
-    struct arg left;
-    left.l = l;
-    left.r = ind - 1;
-    left.arr = arr;
-    pthread_t t1;
-    pthread_create(&t1, NULL, t_quickSort, &left);
-
+    struct arg a1;
+    a1.l = l;
+    a1.r = ind-1;
+    a1.arr = arr;
+    pthread_t tid1;
+    pthread_create(&tid1, NULL, t_quickSort, &a1);
+    
     //sort right half array
-    struct arg right;
-    right.l = ind + 1;
-    right.r = r;
-    right.arr = arr;
-    pthread_t t2;
-    pthread_create(&t2, NULL, t_quickSort, &right);
-
+    struct arg a2;
+    a2.l = ind+1;
+    a2.r = r;
+    a2.arr = arr;
+    pthread_t tid2;
+    pthread_create(&tid2, NULL, t_quickSort, &a2);
+    
     //wait for the two halves to get sorted
-    pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
+    pthread_join(tid1, NULL);
+    pthread_join(tid2, NULL);
 }
 
-void runSorts(long long int n)
+int main(void)
 {
-}
-
-int main()
-{
+    struct timespec ts;
     scanf("%lld", &n);
 
-    //CREATING SHARED MEMORY
+    //Creating shared memory
     int *arr = shareMem(sizeof(int) * (n + 1));
-    printf("came her1\n");
-
-    int *arr2; // copy arry
-    printf("came her2\n");
-
+    int *arr2=arr; // copy array
+    
     for (int i = 0; i < n; i++)
         scanf("%d", arr + i);
-    
 
-    //RUNNING MULTIPROCESS QUICKSORT:
+    //Running Multiprocess quicksort:
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    long double start = ts.tv_nsec / (1e9) + ts.tv_sec;
+
     quickSort(arr, 0, n - 1);
-    printf("came her3\n");
 
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    long double end = ts.tv_nsec / (1e9) + ts.tv_sec;
+    long double t1 = end - start;
 
-    for (int i = 0; i < n; i++)
+    printf("\nSorted using multiprocess quicksort:\n");
+    for (int i = 0; i < n; i++) //Printing the sorted array
         printf("%d ", arr[i]);
-    
-    //RUNNING MULTITHREADED QUICKSORT:
+    printf("\n");
+
+    //Running multithreaded quicksort:
     pthread_t tid;
     struct arg a;
     a.l = 0;
     a.r = n - 1;
     a.arr = arr2;
-    
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    start = ts.tv_nsec / (1e9) + ts.tv_sec;
+
     pthread_create(&tid, NULL, t_quickSort, &a);
     pthread_join(tid, NULL);
+    
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    end = ts.tv_nsec / (1e9) + ts.tv_sec;
+    long double t2 = end - start;
 
-    for (int i = 0; i < n; i++)
+    printf("\nSorted using multithreaded quicksort:\n");
+    for (int i = 0; i < n; i++) // Printing the sorted array
         printf("%d ", arr2[i]);
+    printf("\n");
 
+    printf("\nRunning time for individual sorts : \nMultiprocess: %Lf\nMultithreaded: %Lf\n", t1, t2);
     shmdt(arr);
+
     return 0;
 }

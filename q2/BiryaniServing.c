@@ -177,6 +177,7 @@ void *create_Cook_Chef(void *arg)
         ;
     }
 
+    if(chefs[i].r==0)
     printf("\033[1;34mAll the vessels prepared by Robot Chef J are emptied. Resuming cooking now\n\033[0m");
     create_Cook_Chef((void *)i);
 }
